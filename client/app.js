@@ -119,33 +119,32 @@ function handleLogin() {
         }));
     };
     
-    ws.onclose = () => {
-        wsReady = false;
-    };
-    
-    ws.onerror = () => {
-        wsReady = false;
-    };
-    
     ws.onmessage = (event) => {
-        const message = JSON.parse(event.data);
-        handleServerMessage(message);
+        try {
+            const message = JSON.parse(event.data);
+            handleServerMessage(message);
+        } catch (err) {
+            console.error('Error parsing message:', err);
+        }
     };
     
     ws.onerror = (error) => {
         console.error('WebSocket error:', error);
+        wsReady = false;
         alert('Connection error. Please check if the server is running.');
     };
     
     ws.onclose = () => {
         console.log('WebSocket disconnected');
-        // Show login screen again
-        document.getElementById('loginSection').classList.remove('hidden');
-        document.getElementById('appSection').classList.add('hidden');
-        currentUsername = null;
-        currentChat = null;
-        joinedGroups.clear();
-        
+        wsReady = false;
+        // Only show login screen if we were logged in
+        if (currentUsername) {
+            document.getElementById('loginSection').classList.remove('hidden');
+            document.getElementById('appSection').classList.add('hidden');
+            currentUsername = null;
+            currentChat = null;
+            joinedGroups.clear();
+        }
         // Clear connection
         ws = null;
     };
