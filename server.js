@@ -53,6 +53,7 @@ const clients = new Map(); // Map<WebSocket, ClientInfo>
 const groups = new Map(); // Map<groupId, Set<WebSocket>>
 const messageLog = []; // Log of all messages
 const friendships = new Map(); // Map<username, { friends: Set, sentRequests: Set, receivedRequests: Set }>
+const allRegisteredUsers = new Set(); // Store ALL registered usernames (online and offline)
 
 // Client information structure
 class ClientInfo {
@@ -241,6 +242,7 @@ wss.on('connection', (socket, req) => {
                         
                         const username = message.username.trim();
                         clients.set(socket, new ClientInfo(username, socket));
+                        allRegisteredUsers.add(username); // Add to all registered users
                         
                         socket.send(JSON.stringify({
                             type: 'registered',
@@ -262,6 +264,7 @@ wss.on('connection', (socket, req) => {
                             type: 'initial_data',
                             groups: getAllGroups(),
                             users: getOnlineUsers(),
+                            allUsers: Array.from(allRegisteredUsers), // Send all registered users
                             friends: Array.from(friendships.get(username)?.friends || []),
                             friendRequests: {
                                 sent: Array.from(friendships.get(username)?.sentRequests || []),

@@ -15,6 +15,7 @@ let sidebarTab = 'all'; // Current sidebar tab: 'all', 'unread', 'favorites', 'g
 let typingTimeout = null; // Timeout for typing indicator
 let friends = new Set(); // Store friends list
 let friendRequests = { sent: new Set(), received: new Set() }; // Friend requests
+let allRegisteredUsers = []; // Store all registered users (online and offline)
 
 // Initialize connection when page loads
 window.addEventListener('DOMContentLoaded', () => {

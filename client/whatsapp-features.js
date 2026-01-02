@@ -281,8 +281,9 @@ function showSearchResults(results) {
         const unreadCount = unreadCounts[key] || 0;
         const unreadBadge = unreadCount > 0 ? `<span class="unread-badge">${unreadCount}</span>` : '';
         const favoriteIcon = favorites.has(key) ? '⭐' : '';
-        const isOnline = chatType === 'private' && onlineUsers.includes(id);
+        const isOnline = chatType === 'private' && (result.online !== undefined ? result.online : onlineUsers.includes(id));
         const onlineIndicator = isOnline ? '<span class="online-dot"></span>' : '';
+        const offlineIndicator = !isOnline && chatType === 'private' ? '<span style="color: #999; font-size: 11px;">(offline)</span>' : '';
         
         let preview = '';
         let actionButton = '';
@@ -327,7 +328,7 @@ function showSearchResults(results) {
                 <div class="item-header">
                     <div class="item-name">
                         ${chatType === 'group' ? '👥' : '👤'} ${escapeHtml(id)} ${favoriteIcon}
-                        ${onlineIndicator}
+                        ${onlineIndicator} ${offlineIndicator}
                     </div>
                     ${time ? `<div class="item-time">${time}</div>` : ''}
                 </div>
