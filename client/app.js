@@ -1,24 +1,5 @@
-// WebSocket connection
-let ws = null;
-let currentUsername = null;
-let currentChat = null; // { type: 'group' | 'private', id: string }
-let joinedGroups = new Set();
-let onlineUsers = [];
-let allGroups = [];
-let wsReady = false; // Track if WebSocket is ready to send
-let chatHistory = {}; // Store chat history { 'private:username': [...], 'group:groupId': [...] }
-let favorites = new Set(); // Store favorite chats
-let typingUsers = {}; // Track who is typing { 'chatKey': Set of usernames }
-let messageStatuses = {}; // Track message status { 'messageId': 'sent'|'delivered'|'read' }
-let unreadCounts = {}; // Track unread counts { 'chatKey': count }
-let sidebarTab = 'all'; // Current sidebar tab: 'all', 'unread', 'favorites', 'groups'
-let typingTimeout = null; // Timeout for typing indicator
-let friends = new Set(); // Store friends list
-let friendRequests = { sent: new Set(), received: new Set() }; // Friend requests
-let allRegisteredUsers = []; // Store all registered users (online and offline)
-
-// Handle login
-function handleLogin() {
+// Define handleLogin FIRST to ensure it's always available
+window.handleLogin = function() {
     const usernameInput = document.getElementById('usernameInput');
     const username = usernameInput.value.trim();
     
