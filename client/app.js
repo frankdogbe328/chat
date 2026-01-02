@@ -9,26 +9,62 @@ let allGroups = [];
 // Initialize connection when page loads
 window.addEventListener('DOMContentLoaded', () => {
     // Allow Enter key to login
-    document.getElementById('usernameInput').addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-            handleLogin();
-        }
-    });
+    const usernameInput = document.getElementById('usernameInput');
+    if (usernameInput) {
+        usernameInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                handleLogin();
+            }
+        });
+    }
     
     // Allow Enter key to send message
-    document.getElementById('messageInput').addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-            sendMessage();
-        }
-    });
+    const messageInput = document.getElementById('messageInput');
+    if (messageInput) {
+        messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+    }
     
     // Allow Enter key to create group
-    document.getElementById('newGroupInput').addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-            createGroup();
-        }
-    });
+    const newGroupInput = document.getElementById('newGroupInput');
+    if (newGroupInput) {
+        newGroupInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                createGroup();
+            }
+        });
+    }
+
+    // Close sidebar when clicking outside on mobile
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.querySelector('.sidebar-overlay');
+    if (sidebar && overlay) {
+        overlay.addEventListener('click', () => {
+            toggleSidebar();
+        });
+    }
 });
+
+// Toggle sidebar on mobile
+function toggleSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.querySelector('.sidebar-overlay');
+    
+    if (sidebar && overlay) {
+        sidebar.classList.toggle('open');
+        overlay.classList.toggle('show');
+    }
+}
+
+// Close sidebar when selecting item on mobile
+function closeSidebarOnMobile() {
+    if (window.innerWidth <= 768) {
+        toggleSidebar();
+    }
+}
 
 // Handle login
 function handleLogin() {
@@ -213,6 +249,10 @@ function createGroup() {
     }));
     
     groupInput.value = '';
+    // Close sidebar on mobile after creating group
+    if (window.innerWidth <= 768) {
+        setTimeout(closeSidebarOnMobile, 300);
+    }
 }
 
 // Join a group
@@ -273,6 +313,7 @@ function selectGroup(groupId) {
         id: groupId
     };
     updateChatView();
+    closeSidebarOnMobile();
 }
 
 // Select a user for private messaging
@@ -288,6 +329,7 @@ function selectUser(username) {
         recipient: username
     };
     updateChatView();
+    closeSidebarOnMobile();
 }
 
 // Send message (group or private)
@@ -354,13 +396,19 @@ function updateGroupsList() {
                 <div class="item-name">${escapeHtml(group.groupId)}</div>
                 <div class="item-info">${group.memberCount} member(s) - You are a member</div>
             `;
-            item.onclick = () => selectGroup(group.groupId);
+            item.onclick = () => {
+                selectGroup(group.groupId);
+                closeSidebarOnMobile();
+            };
         } else {
             item.innerHTML = `
                 <div class="item-name">${escapeHtml(group.groupId)}</div>
                 <div class="item-info">${group.memberCount} member(s) - Click to join</div>
             `;
-            item.onclick = () => joinGroup(group.groupId);
+            item.onclick = () => {
+                joinGroup(group.groupId);
+                closeSidebarOnMobile();
+            };
         }
         
         groupsList.appendChild(item);
@@ -390,7 +438,10 @@ function updateUsersList() {
             <div class="item-name">${escapeHtml(user)}</div>
             <div class="item-info">Click to send private message</div>
         `;
-        item.onclick = () => selectUser(user);
+        item.onclick = () => {
+            selectUser(user);
+            closeSidebarOnMobile();
+        };
         
         usersList.appendChild(item);
     });

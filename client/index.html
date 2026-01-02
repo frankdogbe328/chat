@@ -2,7 +2,9 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
     <title>Distributed Communication System</title>
     <link rel="stylesheet" href="style.css">
 </head>
@@ -32,8 +34,12 @@
             </header>
 
             <div class="main-content">
+                <!-- Sidebar Toggle Button (Mobile) -->
+                <button class="sidebar-toggle" onclick="toggleSidebar()">☰ Menu</button>
+                <div class="sidebar-overlay" onclick="toggleSidebar()"></div>
+                
                 <!-- Sidebar -->
-                <aside class="sidebar">
+                <aside class="sidebar" id="sidebar">
                     <!-- Groups Section -->
                     <div class="panel">
                         <h3>Groups</h3>
