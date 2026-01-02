@@ -154,7 +154,7 @@ window.handleLogin = function() {
             ws.send(JSON.stringify({ type: 'heartbeat' }));
         }
     }, 30000); // Send heartbeat every 30 seconds
-}
+};
 
 // Handle logout
 function handleLogout() {
