@@ -62,7 +62,14 @@ function toggleSidebar() {
 // Close sidebar when selecting item on mobile
 function closeSidebarOnMobile() {
     if (window.innerWidth <= 768) {
-        toggleSidebar();
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.querySelector('.sidebar-overlay');
+        
+        if (sidebar && overlay) {
+            // Force close sidebar
+            sidebar.classList.remove('open');
+            overlay.classList.remove('show');
+        }
     }
 }
 
@@ -277,8 +284,12 @@ function joinGroup(groupId) {
     setTimeout(() => {
         if (joinedGroups.has(groupId)) {
             selectGroup(groupId);
+            // selectGroup will handle closing sidebar
+        } else {
+            // If join failed or still joining, close sidebar anyway on mobile
+            closeSidebarOnMobile();
         }
-    }, 100);
+    }, 200);
 }
 
 // Leave current group
@@ -313,7 +324,10 @@ function selectGroup(groupId) {
         id: groupId
     };
     updateChatView();
-    closeSidebarOnMobile();
+    // Close sidebar immediately on mobile
+    setTimeout(() => {
+        closeSidebarOnMobile();
+    }, 100);
 }
 
 // Select a user for private messaging
@@ -329,7 +343,10 @@ function selectUser(username) {
         recipient: username
     };
     updateChatView();
-    closeSidebarOnMobile();
+    // Close sidebar immediately on mobile
+    setTimeout(() => {
+        closeSidebarOnMobile();
+    }, 100);
 }
 
 // Send message (group or private)
@@ -398,7 +415,7 @@ function updateGroupsList() {
             `;
             item.onclick = () => {
                 selectGroup(group.groupId);
-                closeSidebarOnMobile();
+                // closeSidebarOnMobile is called inside selectGroup
             };
         } else {
             item.innerHTML = `
@@ -407,7 +424,7 @@ function updateGroupsList() {
             `;
             item.onclick = () => {
                 joinGroup(group.groupId);
-                closeSidebarOnMobile();
+                // Sidebar will close after group is joined
             };
         }
         
@@ -440,7 +457,7 @@ function updateUsersList() {
         `;
         item.onclick = () => {
             selectUser(user);
-            closeSidebarOnMobile();
+            // closeSidebarOnMobile is called inside selectUser
         };
         
         usersList.appendChild(item);
