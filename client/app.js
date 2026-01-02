@@ -5,6 +5,8 @@ let currentChat = null; // { type: 'group' | 'private', id: string }
 let joinedGroups = new Set();
 let onlineUsers = [];
 let allGroups = [];
+let wsReady = false; // Track if WebSocket is ready to send
+let chatHistory = {}; // Store chat history { 'private:username': [...], 'group:groupId': [...] }
 
 // Initialize connection when page loads
 window.addEventListener('DOMContentLoaded', () => {
@@ -91,11 +93,20 @@ function handleLogin() {
     
     ws.onopen = () => {
         console.log('WebSocket connected');
+        wsReady = true;
         // Register user
         ws.send(JSON.stringify({
             type: 'register',
             username: username
         }));
+    };
+    
+    ws.onclose = () => {
+        wsReady = false;
+    };
+    
+    ws.onerror = () => {
+        wsReady = false;
     };
     
     ws.onmessage = (event) => {
@@ -202,12 +213,38 @@ function handleServerMessage(message) {
             break;
         
         case 'group_message':
+            const groupChatKey = 'group:' + message.groupId;
+            // Save to history
+            if (!chatHistory[groupChatKey]) {
+                chatHistory[groupChatKey] = [];
+            }
+            chatHistory[groupChatKey].push({
+                type: 'group',
+                from: message.from,
+                content: message.content,
+                timestamp: message.timestamp,
+                received: message.from !== currentUsername
+            });
+            
             if (currentChat && currentChat.type === 'group' && currentChat.id === message.groupId) {
                 addMessageToChat('group', message.from, message.content, message.timestamp, message.from !== currentUsername);
             }
             break;
         
         case 'private_message':
+            const privateChatKey = 'private:' + message.from;
+            // Save to history
+            if (!chatHistory[privateChatKey]) {
+                chatHistory[privateChatKey] = [];
+            }
+            chatHistory[privateChatKey].push({
+                type: 'private',
+                from: message.from,
+                content: message.content,
+                timestamp: message.timestamp,
+                received: true
+            });
+            
             // Show private message in chat if we're chatting with this user
             if (currentChat && currentChat.type === 'private' && currentChat.id === message.from) {
                 addMessageToChat('private', message.from, message.content, message.timestamp, true);
@@ -220,9 +257,7 @@ function handleServerMessage(message) {
             break;
         
         case 'private_message_sent':
-            if (currentChat && currentChat.type === 'private' && currentChat.id === currentChat.recipient) {
-                // Message was sent, already displayed on sender side
-            }
+            // Message was successfully sent, already saved in sendMessage function
             break;
         
         case 'error':
@@ -363,10 +398,32 @@ function sendMessage() {
         return;
     }
     
-    if (!ws || ws.readyState !== WebSocket.OPEN) {
-        alert('Not connected to server');
+    // Wait for WebSocket to be ready
+    if (!ws || ws.readyState !== WebSocket.OPEN || !wsReady) {
+        alert('Not connected to server. Please wait...');
+        // Try to reconnect or wait
+        setTimeout(() => {
+            if (ws && ws.readyState === WebSocket.OPEN && wsReady) {
+                sendMessage(); // Retry
+            }
+        }, 500);
         return;
     }
+    
+    const timestamp = new Date().toISOString();
+    const chatKey = currentChat.type + ':' + currentChat.id;
+    
+    // Save to history
+    if (!chatHistory[chatKey]) {
+        chatHistory[chatKey] = [];
+    }
+    chatHistory[chatKey].push({
+        type: currentChat.type,
+        from: currentUsername,
+        content: content,
+        timestamp: timestamp,
+        received: false
+    });
     
     if (currentChat.type === 'group') {
         ws.send(JSON.stringify({
@@ -375,8 +432,8 @@ function sendMessage() {
             content: content
         }));
         
-        // Optimistically add message to chat
-        addMessageToChat('group', currentUsername, content, new Date().toISOString(), false);
+        // Add message to chat immediately
+        addMessageToChat('group', currentUsername, content, timestamp, false);
     } else if (currentChat.type === 'private') {
         ws.send(JSON.stringify({
             type: 'private_message',
@@ -384,8 +441,8 @@ function sendMessage() {
             content: content
         }));
         
-        // Optimistically add message to chat
-        addMessageToChat('private', currentUsername, content, new Date().toISOString(), false);
+        // Add message to chat immediately
+        addMessageToChat('private', currentUsername, content, timestamp, false);
     }
     
     messageInput.value = '';
@@ -464,6 +521,13 @@ function updateUsersList() {
     });
 }
 
+// Go to home screen
+function goToHome() {
+    currentChat = null;
+    updateChatView();
+    closeSidebarOnMobile();
+}
+
 // Update chat view
 function updateChatView() {
     const chatTitle = document.getElementById('chatTitle');
@@ -476,6 +540,55 @@ function updateChatView() {
         chatTitle.textContent = 'Select a group or user to start chatting';
         messageInputSection.classList.add('hidden');
         chatActions.classList.add('hidden');
+        
+        // Show recent chats
+        showRecentChats();
+        return;
+    }
+    
+    messageInputSection.classList.remove('hidden');
+    
+    const chatKey = currentChat.type + ':' + currentChat.id;
+    
+    if (currentChat.type === 'group') {
+        chatTitle.textContent = `Group: ${currentChat.id}`;
+        chatActions.classList.remove('hidden');
+        messageTypeInfo.textContent = `Sending group message to all members of "${currentChat.id}"`;
+        
+        // Load and show chat history
+        messagesContainer.innerHTML = '';
+        if (chatHistory[chatKey] && chatHistory[chatKey].length > 0) {
+            chatHistory[chatKey].forEach(msg => {
+                addMessageToChat(msg.type, msg.from, msg.content, msg.timestamp, msg.received);
+            });
+        }
+    } else if (currentChat.type === 'private') {
+        chatTitle.textContent = `Private Chat: ${currentChat.id}`;
+        chatActions.classList.add('hidden');
+        messageTypeInfo.textContent = `Private message to ${currentChat.id}`;
+        
+        // Load and show chat history
+        messagesContainer.innerHTML = '';
+        if (chatHistory[chatKey] && chatHistory[chatKey].length > 0) {
+            chatHistory[chatKey].forEach(msg => {
+                addMessageToChat(msg.type, msg.from, msg.content, msg.timestamp, msg.received);
+            });
+        }
+    }
+    
+    // Focus on message input
+    setTimeout(() => {
+        const input = document.getElementById('messageInput');
+        if (input) input.focus();
+    }, 100);
+}
+
+// Show recent chats on home screen
+function showRecentChats() {
+    const messagesContainer = document.getElementById('messagesContainer');
+    const chatKeys = Object.keys(chatHistory);
+    
+    if (chatKeys.length === 0) {
         messagesContainer.innerHTML = `
             <div class="welcome-message">
                 <p>Welcome to ZooRoom!</p>
@@ -487,26 +600,54 @@ function updateChatView() {
         return;
     }
     
-    messageInputSection.classList.remove('hidden');
+    // Sort chats by most recent message
+    const sortedChats = chatKeys.map(key => {
+        const messages = chatHistory[key];
+        const lastMessage = messages[messages.length - 1];
+        return { key, lastMessage, messages };
+    }).sort((a, b) => new Date(b.lastMessage.timestamp) - new Date(a.lastMessage.timestamp));
     
-    if (currentChat.type === 'group') {
-        chatTitle.textContent = `Group: ${currentChat.id}`;
-        chatActions.classList.remove('hidden');
-        messageTypeInfo.textContent = `Sending group message to all members of "${currentChat.id}"`;
+    let html = '<div class="recent-chats">';
+    html += '<h3 style="padding: 15px; color: #667eea; border-bottom: 1px solid #e0e0e0;">Recent Chats</h3>';
+    
+    sortedChats.forEach(({ key, lastMessage, messages }) => {
+        const [type, id] = key.split(':');
+        const lastMsgText = lastMessage.content.length > 30 
+            ? lastMessage.content.substring(0, 30) + '...' 
+            : lastMessage.content;
+        const time = new Date(lastMessage.timestamp).toLocaleTimeString();
+        const unreadCount = messages.filter(m => m.received && !m.read).length;
+        const unreadBadge = unreadCount > 0 ? `<span class="unread-badge">${unreadCount}</span>` : '';
         
-        // Clear messages and show group chat
-        messagesContainer.innerHTML = '';
-    } else if (currentChat.type === 'private') {
-        chatTitle.textContent = `Private Chat: ${currentChat.id}`;
-        chatActions.classList.add('hidden');
-        messageTypeInfo.textContent = `Private message to ${currentChat.id}`;
-        
-        // Clear messages and show private chat
-        messagesContainer.innerHTML = '';
+        html += `
+            <div class="recent-chat-item" onclick="openRecentChat('${type}', '${id}')">
+                <div class="recent-chat-info">
+                    <div class="recent-chat-name">
+                        ${type === 'group' ? '👥' : '👤'} ${escapeHtml(id)}
+                        ${unreadBadge}
+                    </div>
+                    <div class="recent-chat-preview">${escapeHtml(lastMsgText)}</div>
+                    <div class="recent-chat-time">${time}</div>
+                </div>
+            </div>
+        `;
+    });
+    
+    html += '</div>';
+    messagesContainer.innerHTML = html;
+}
+
+// Open a recent chat
+function openRecentChat(type, id) {
+    if (type === 'group') {
+        if (joinedGroups.has(id)) {
+            selectGroup(id);
+        } else {
+            joinGroup(id);
+        }
+    } else {
+        selectUser(id);
     }
-    
-    // Focus on message input
-    document.getElementById('messageInput').focus();
 }
 
 // Add message to chat

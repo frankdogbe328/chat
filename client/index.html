@@ -26,7 +26,10 @@
         <!-- Main Application Section -->
         <div id="appSection" class="section hidden">
             <header>
-                <h2>ZooRoom</h2>
+                <div class="header-left">
+                    <button class="sidebar-toggle" onclick="toggleSidebar()">☰</button>
+                    <h2 id="homeBtn" onclick="goToHome()">ZooRoom</h2>
+                </div>
                 <div class="user-info">
                     <span id="currentUsername"></span>
                     <button id="logoutBtn" onclick="handleLogout()">Logout</button>
@@ -34,8 +37,7 @@
             </header>
 
             <div class="main-content">
-                <!-- Sidebar Toggle Button (Mobile) -->
-                <button class="sidebar-toggle" onclick="toggleSidebar()">☰ Menu</button>
+                <!-- Sidebar Overlay -->
                 <div class="sidebar-overlay" onclick="toggleSidebar()"></div>
                 
                 <!-- Sidebar -->
