@@ -92,12 +92,27 @@ window.addEventListener('DOMContentLoaded', () => {
     // Load favorites from localStorage
     loadFavorites();
     
+    // Setup login button click handler as backup
+    const loginBtn = document.getElementById('loginBtn');
+    if (loginBtn) {
+        loginBtn.addEventListener('click', () => {
+            if (typeof window.handleLogin === 'function') {
+                window.handleLogin();
+            } else {
+                console.error('handleLogin function not found');
+                alert('Login function not loaded. Please refresh the page.');
+            }
+        });
+    }
+    
     // Allow Enter key to login
     const usernameInput = document.getElementById('usernameInput');
     if (usernameInput) {
         usernameInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
-                handleLogin();
+                if (typeof window.handleLogin === 'function') {
+                    window.handleLogin();
+                }
             }
         });
     }
