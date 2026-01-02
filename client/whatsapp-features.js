@@ -134,7 +134,7 @@ function loadFavorites() {
     }
 }
 
-// Switch sidebar tab - Make sure this function is accessible globally
+// Switch sidebar tab - Make globally accessible
 window.switchSidebarTab = function(tab) {
     sidebarTab = tab;
     console.log('Switching to tab:', tab);
