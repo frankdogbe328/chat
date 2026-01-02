@@ -522,7 +522,7 @@ wss.on('connection', (socket, req) => {
 
 // Start server
 server.listen(PORT, () => {
-    console.log(`Distributed Communication System Server running on port ${PORT}`);
+    console.log(`ZooRoom Server running on port ${PORT}`);
     console.log(`Access the application at: http://localhost:${PORT}`);
     console.log('Server is ready to handle distributed connections...');
 });

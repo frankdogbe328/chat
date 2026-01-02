@@ -461,9 +461,9 @@ function updateChatView() {
         chatActions.classList.add('hidden');
         messagesContainer.innerHTML = `
             <div class="welcome-message">
-                <p>Welcome to the Distributed Communication System!</p>
+                <p>Welcome to ZooRoom!</p>
                 <p>• Create or join a group to send group messages</p>
-                <p>• Select a user to send private messages</p>
+                <p>• Click on a user's name to chat privately</p>
                 <p>• All messages are logged and tracked</p>
             </div>
         `;

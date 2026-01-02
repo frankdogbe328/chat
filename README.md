@@ -1,4 +1,4 @@
-# Distributed Communication System
+# ZooRoom - Distributed Communication System
 
 A distributed communication application that supports group messaging (multicast) and private messaging (unicast) across multiple nodes. Built for CSBC 311 - Distributed Systems course project.
 
