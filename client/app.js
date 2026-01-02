@@ -16,6 +16,9 @@ let typingTimeout = null; // Timeout for typing indicator
 
 // Initialize connection when page loads
 window.addEventListener('DOMContentLoaded', () => {
+    // Load favorites from localStorage
+    loadFavorites();
+    
     // Allow Enter key to login
     const usernameInput = document.getElementById('usernameInput');
     if (usernameInput) {
@@ -546,23 +549,35 @@ function updateGroupsList() {
             item.classList.add('active');
         }
         
+        const chatKey = 'group:' + group.groupId;
+        const unreadCount = unreadCounts[chatKey] || 0;
+        const unreadBadge = unreadCount > 0 ? `<span class="unread-badge">${unreadCount}</span>` : '';
+        const favoriteIcon = favorites.has(chatKey) ? '⭐' : '';
+        
         if (joinedGroups.has(group.groupId)) {
             item.innerHTML = `
-                <div class="item-name">${escapeHtml(group.groupId)}</div>
-                <div class="item-info">${group.memberCount} member(s) - You are a member</div>
+                ${getProfilePicture(group.groupId)}
+                <div class="item-content">
+                    <div class="item-header">
+                        <div class="item-name">👥 ${escapeHtml(group.groupId)} ${favoriteIcon}</div>
+                        ${unreadBadge}
+                    </div>
+                    <div class="item-info">${group.memberCount} member(s) - You are a member</div>
+                </div>
             `;
             item.onclick = () => {
                 selectGroup(group.groupId);
-                // closeSidebarOnMobile is called inside selectGroup
             };
         } else {
             item.innerHTML = `
-                <div class="item-name">${escapeHtml(group.groupId)}</div>
-                <div class="item-info">${group.memberCount} member(s) - Click to join</div>
+                ${getProfilePicture(group.groupId)}
+                <div class="item-content">
+                    <div class="item-name">👥 ${escapeHtml(group.groupId)}</div>
+                    <div class="item-info">${group.memberCount} member(s) - Click to join</div>
+                </div>
             `;
             item.onclick = () => {
                 joinGroup(group.groupId);
-                // Sidebar will close after group is joined
             };
         }
         
