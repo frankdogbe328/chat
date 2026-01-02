@@ -1,8 +1,8 @@
 // WhatsApp-like Features
 // This file contains functions for message status, typing indicators, profile pictures, etc.
 
-// Generate profile picture/avatar based on username
-function getProfilePicture(username) {
+// Generate profile picture/avatar based on username - Make globally accessible
+window.getProfilePicture = function(username) {
     const colors = ['#667eea', '#764ba2', '#f093fb', '#4facfe', '#43e97b', '#fa709a', '#fee140', '#30cfd0'];
     const color = colors[username.charCodeAt(0) % colors.length];
     const initial = username.charAt(0).toUpperCase();
@@ -11,12 +11,12 @@ function getProfilePicture(username) {
     return `<div class="avatar" style="background-color: ${color};">
         <span>${initial}</span>
     </div>`;
-}
+};
 
-// Generate unique message ID
-function generateMessageId() {
+// Generate unique message ID - Make globally accessible
+window.generateMessageId = function() {
     return Date.now().toString(36) + Math.random().toString(36).substr(2);
-}
+};
 
 // Update message status
 function updateMessageStatus(messageId, status) {
@@ -104,14 +104,14 @@ function updateTypingIndicatorUI(chatKey) {
     container.scrollTop = container.scrollHeight;
 }
 
-// Get chat key for a chat object
-function getChatKey(chat) {
+// Get chat key for a chat object - Make globally accessible
+window.getChatKey = function(chat) {
     if (!chat) return null;
     return chat.type + ':' + chat.id;
-}
+};
 
-// Toggle favorite
-function toggleFavorite(chatKey) {
+// Toggle favorite - Make globally accessible
+window.toggleFavorite = function(chatKey) {
     if (favorites.has(chatKey)) {
         favorites.delete(chatKey);
     } else {
@@ -119,7 +119,7 @@ function toggleFavorite(chatKey) {
     }
     saveFavorites();
     updateAllChatLists();
-}
+};
 
 // Save favorites to localStorage
 function saveFavorites() {
@@ -134,9 +134,16 @@ function loadFavorites() {
     }
 }
 
-// Switch sidebar tab
-function switchSidebarTab(tab) {
+// Switch sidebar tab - Make sure this function is accessible globally
+window.switchSidebarTab = function(tab) {
     sidebarTab = tab;
+    console.log('Switching to tab:', tab);
+    
+    // Clear search when switching tabs
+    const searchInput = document.getElementById('searchInput');
+    if (searchInput) {
+        searchInput.value = '';
+    }
     
     // Update tab buttons
     document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -146,29 +153,43 @@ function switchSidebarTab(tab) {
         }
     });
     
-    // Update tab panels
+    // Hide all tab panels
     document.querySelectorAll('.tab-panel').forEach(panel => {
         panel.classList.remove('active');
     });
     
-    // Show selected panel
+    // Show selected panel and update content
     if (tab === 'all') {
-        document.getElementById('allChatsPanel').classList.add('active');
-        updateAllChatsList();
+        const panel = document.getElementById('allChatsPanel');
+        if (panel) {
+            panel.classList.add('active');
+            updateAllChatsList();
+        } else {
+            console.error('allChatsPanel not found');
+        }
     } else if (tab === 'unread') {
-        document.getElementById('unreadChatsPanel').classList.add('active');
-        updateUnreadChatsList();
+        const panel = document.getElementById('unreadChatsPanel');
+        if (panel) {
+            panel.classList.add('active');
+            updateUnreadChatsList();
+        }
     } else if (tab === 'favorites') {
-        document.getElementById('favoritesPanel').classList.add('active');
-        updateFavoritesList();
+        const panel = document.getElementById('favoritesPanel');
+        if (panel) {
+            panel.classList.add('active');
+            updateFavoritesList();
+        }
     } else if (tab === 'groups') {
-        document.getElementById('groupsPanel').classList.add('active');
-        updateGroupsList();
+        const panel = document.getElementById('groupsPanel');
+        if (panel) {
+            panel.classList.add('active');
+            updateGroupsList();
+        }
     }
-}
+};
 
-// Handle search
-function handleSearch() {
+// Handle search - Make sure this function is accessible globally
+window.handleSearch = function() {
     const searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
     
     if (searchTerm === '') {
@@ -217,7 +238,7 @@ function handleSearch() {
     
     // Show search results
     showSearchResults(results);
-}
+};
 
 // Show search results
 function showSearchResults(results) {
@@ -327,7 +348,40 @@ function updateAllChatsList() {
     });
     
     if (chatKeys.length === 0) {
-        list.innerHTML = '<div class="list-item"><div class="item-info">No chats yet. Start chatting with someone!</div></div>';
+        // Show online users and groups if no chat history
+        let html = '';
+        if (onlineUsers.length > 1) {
+            html += '<div class="list-item" style="background: #f0f0f0; font-weight: 600; color: #667eea;">Online Users - Click to Chat</div>';
+            onlineUsers.filter(u => u !== currentUsername).forEach(user => {
+                html += `
+                    <div class="list-item" onclick="selectUser('${escapeHtml(user)}')">
+                        ${getProfilePicture(user)}
+                        <div class="item-content">
+                            <div class="item-name">👤 ${escapeHtml(user)} <span class="online-dot"></span></div>
+                            <div class="item-info">Tap to start chatting</div>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+        if (allGroups.length > 0) {
+            html += '<div class="list-item" style="background: #f0f0f0; font-weight: 600; color: #667eea; margin-top: 10px;">Available Groups</div>';
+            allGroups.forEach(group => {
+                html += `
+                    <div class="list-item" onclick="${joinedGroups.has(group.groupId) ? `selectGroup('${group.groupId}')` : `joinGroup('${group.groupId}')`}">
+                        ${getProfilePicture(group.groupId)}
+                        <div class="item-content">
+                            <div class="item-name">👥 ${escapeHtml(group.groupId)}</div>
+                            <div class="item-info">${group.memberCount} member(s)</div>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+        if (html === '') {
+            html = '<div class="list-item"><div class="item-info">No chats yet. Search for users or create a group!</div></div>';
+        }
+        list.innerHTML = html;
         return;
     }
     
