@@ -220,16 +220,26 @@ window.handleSearch = function() {
         }
     });
     
-    // Search online users (even if not in chat history)
-    onlineUsers.forEach(user => {
+    // Search ALL registered users (online and offline) - not just online users
+    const usersToSearch = allRegisteredUsers && allRegisteredUsers.length > 0 ? allRegisteredUsers : onlineUsers;
+    usersToSearch.forEach(user => {
         if (user !== currentUsername && user.toLowerCase().includes(searchTerm)) {
             const chatKey = 'private:' + user;
             const exists = results.some(r => r.key === chatKey);
+            const isOnline = onlineUsers.includes(user);
             if (!exists) {
-                results.push({ type: 'user', key: chatKey, id: user, chatType: 'private' });
+                results.push({ type: 'user', key: chatKey, id: user, chatType: 'private', online: isOnline });
             }
         }
     });
+    
+    // If no results and search term is at least 2 characters, request server search
+    if (results.length === 0 && searchTerm.length >= 2 && ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({
+            type: 'search_users',
+            query: document.getElementById('searchInput').value.trim()
+        }));
+    }
     
     // Search groups (even if not in chat history)
     allGroups.forEach(group => {
