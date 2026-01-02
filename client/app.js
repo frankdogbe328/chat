@@ -711,7 +711,73 @@ window.goToHome = function() {
     currentChat = null;
     updateChatView();
     closeSidebarOnMobile();
-}
+};
+
+// Switch sidebar tab - Define here to ensure it's always available globally
+window.switchSidebarTab = function(tab) {
+    sidebarTab = tab;
+    console.log('Switching to tab:', tab);
+    
+    // Clear search when switching tabs
+    const searchInput = document.getElementById('searchInput');
+    if (searchInput) {
+        searchInput.value = '';
+    }
+    
+    // Update tab buttons
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.dataset.tab === tab) {
+            btn.classList.add('active');
+        }
+    });
+    
+    // Hide all tab panels
+    document.querySelectorAll('.tab-panel').forEach(panel => {
+        panel.classList.remove('active');
+    });
+    
+    // Show selected panel and update content
+    if (tab === 'all') {
+        const panel = document.getElementById('allChatsPanel');
+        if (panel) {
+            panel.classList.add('active');
+            if (typeof updateAllChatsList === 'function') {
+                updateAllChatsList();
+            }
+        }
+    } else if (tab === 'unread') {
+        const panel = document.getElementById('unreadChatsPanel');
+        if (panel) {
+            panel.classList.add('active');
+            if (typeof updateUnreadChatsList === 'function') {
+                updateUnreadChatsList();
+            }
+        }
+    } else if (tab === 'requests') {
+        const panel = document.getElementById('requestsPanel');
+        if (panel) {
+            panel.classList.add('active');
+            if (typeof updateFriendRequestsList === 'function') {
+                updateFriendRequestsList();
+            }
+        }
+    } else if (tab === 'favorites') {
+        const panel = document.getElementById('favoritesPanel');
+        if (panel) {
+            panel.classList.add('active');
+            if (typeof updateFavoritesList === 'function') {
+                updateFavoritesList();
+            }
+        }
+    } else if (tab === 'groups') {
+        const panel = document.getElementById('groupsPanel');
+        if (panel) {
+            panel.classList.add('active');
+            updateGroupsList();
+        }
+    }
+};
 
 // Update chat view
 function updateChatView() {
