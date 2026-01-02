@@ -132,8 +132,23 @@
         </div>
     </div>
 
+    <script>
+        // Ensure handleLogin is available immediately - mobile browser fix
+        console.log('Scripts loading...');
+    </script>
     <script src="whatsapp-features.js"></script>
     <script src="app.js"></script>
+    <script>
+        // Verify handleLogin is loaded
+        window.addEventListener('load', function() {
+            console.log('Page loaded. handleLogin available:', typeof window.handleLogin);
+            if (typeof window.handleLogin === 'function') {
+                console.log('✅ handleLogin is ready');
+            } else {
+                console.error('❌ handleLogin is NOT available');
+            }
+        });
+    </script>
 </body>
 </html>
 
