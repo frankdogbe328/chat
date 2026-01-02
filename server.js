@@ -39,6 +39,26 @@ const server = http.createServer((req, res) => {
             res.writeHead(200, { 'Content-Type': 'application/javascript' });
             res.end(data);
         });
+    } else if (req.url === '/whatsapp-features.js') {
+        fs.readFile(path.join(__dirname, 'client', 'whatsapp-features.js'), (err, data) => {
+            if (err) {
+                res.writeHead(404);
+                res.end('File not found');
+                return;
+            }
+            res.writeHead(200, { 'Content-Type': 'application/javascript' });
+            res.end(data);
+        });
+    } else if (req.url === '/friend-system.js') {
+        fs.readFile(path.join(__dirname, 'client', 'friend-system.js'), (err, data) => {
+            if (err) {
+                res.writeHead(404);
+                res.end('File not found');
+                return;
+            }
+            res.writeHead(200, { 'Content-Type': 'application/javascript' });
+            res.end(data);
+        });
     } else {
         res.writeHead(404);
         res.end('Not found');
