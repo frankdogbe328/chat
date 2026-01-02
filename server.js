@@ -52,6 +52,7 @@ const wss = new WebSocket.Server({ server });
 const clients = new Map(); // Map<WebSocket, ClientInfo>
 const groups = new Map(); // Map<groupId, Set<WebSocket>>
 const messageLog = []; // Log of all messages
+const friendships = new Map(); // Map<username, { friends: Set, sentRequests: Set, receivedRequests: Set }>
 
 // Client information structure
 class ClientInfo {
@@ -247,11 +248,25 @@ wss.on('connection', (socket, req) => {
                             message: 'Successfully registered'
                         }));
                         
-                        // Send current groups and users
+                        // Initialize friendship data for new user
+                        if (!friendships.has(username)) {
+                            friendships.set(username, {
+                                friends: new Set(),
+                                sentRequests: new Set(),
+                                receivedRequests: new Set()
+                            });
+                        }
+                        
+                        // Send current groups, users, and friend data
                         socket.send(JSON.stringify({
                             type: 'initial_data',
                             groups: getAllGroups(),
-                            users: getOnlineUsers()
+                            users: getOnlineUsers(),
+                            friends: Array.from(friendships.get(username)?.friends || []),
+                            friendRequests: {
+                                sent: Array.from(friendships.get(username)?.sentRequests || []),
+                                received: Array.from(friendships.get(username)?.receivedRequests || [])
+                            }
                         }));
                         
                         // Notify all clients about new user
@@ -455,6 +470,18 @@ wss.on('connection', (socket, req) => {
                     }
                     
                     const recipient = message.to;
+                    const sender = clientInfo5.username;
+                    
+                    // Check if users are friends
+                    const senderFriendship = friendships.get(sender);
+                    if (!senderFriendship || !senderFriendship.friends.has(recipient)) {
+                        socket.send(JSON.stringify({
+                            type: 'error',
+                            message: `You must be friends with ${recipient} to send private messages`
+                        }));
+                        break;
+                    }
+                    
                     const privateContent = message.content;
                     
                     // Retry logic for message delivery (with setTimeout for delayed retries)
@@ -546,6 +573,136 @@ wss.on('connection', (socket, req) => {
                             readBy: clientInfo7.username
                         });
                     }
+                    break;
+                
+                case 'send_friend_request':
+                    const clientInfo8 = clients.get(socket);
+                    if (!clientInfo8) break;
+                    
+                    const targetUser = message.to;
+                    const sender = clientInfo8.username;
+                    
+                    if (targetUser === sender) {
+                        socket.send(JSON.stringify({
+                            type: 'error',
+                            message: 'Cannot send friend request to yourself'
+                        }));
+                        break;
+                    }
+                    
+                    // Initialize friendship data if needed
+                    if (!friendships.has(sender)) {
+                        friendships.set(sender, { friends: new Set(), sentRequests: new Set(), receivedRequests: new Set() });
+                    }
+                    if (!friendships.has(targetUser)) {
+                        friendships.set(targetUser, { friends: new Set(), sentRequests: new Set(), receivedRequests: new Set() });
+                    }
+                    
+                    const senderData = friendships.get(sender);
+                    const targetData = friendships.get(targetUser);
+                    
+                    // Check if already friends
+                    if (senderData.friends.has(targetUser)) {
+                        socket.send(JSON.stringify({
+                            type: 'error',
+                            message: `${targetUser} is already your friend`
+                        }));
+                        break;
+                    }
+                    
+                    // Check if request already sent
+                    if (senderData.sentRequests.has(targetUser)) {
+                        socket.send(JSON.stringify({
+                            type: 'error',
+                            message: 'Friend request already sent'
+                        }));
+                        break;
+                    }
+                    
+                    // Add to sent/received requests
+                    senderData.sentRequests.add(targetUser);
+                    targetData.receivedRequests.add(sender);
+                    
+                    // Notify recipient
+                    sendToClient(targetUser, {
+                        type: 'friend_request_received',
+                        from: sender
+                    });
+                    
+                    // Confirm to sender
+                    socket.send(JSON.stringify({
+                        type: 'friend_request_sent',
+                        to: targetUser
+                    }));
+                    break;
+                
+                case 'accept_friend_request':
+                    const clientInfo9 = clients.get(socket);
+                    if (!clientInfo9) break;
+                    
+                    const requester = message.from;
+                    const accepter = clientInfo9.username;
+                    
+                    if (!friendships.has(requester) || !friendships.has(accepter)) break;
+                    
+                    const requesterData = friendships.get(requester);
+                    const accepterData = friendships.get(accepter);
+                    
+                    // Check if request exists
+                    if (!accepterData.receivedRequests.has(requester)) {
+                        socket.send(JSON.stringify({
+                            type: 'error',
+                            message: 'Friend request not found'
+                        }));
+                        break;
+                    }
+                    
+                    // Remove from requests
+                    accepterData.receivedRequests.delete(requester);
+                    requesterData.sentRequests.delete(accepter);
+                    
+                    // Add to friends
+                    accepterData.friends.add(requester);
+                    requesterData.friends.add(accepter);
+                    
+                    // Notify both users
+                    socket.send(JSON.stringify({
+                        type: 'friend_request_accepted',
+                        from: requester,
+                        friends: Array.from(accepterData.friends)
+                    }));
+                    
+                    sendToClient(requester, {
+                        type: 'friend_request_accepted',
+                        from: accepter,
+                        friends: Array.from(requesterData.friends)
+                    });
+                    break;
+                
+                case 'decline_friend_request':
+                    const clientInfo10 = clients.get(socket);
+                    if (!clientInfo10) break;
+                    
+                    const decliner = clientInfo10.username;
+                    const requestSender = message.from;
+                    
+                    if (!friendships.has(requestSender) || !friendships.has(decliner)) break;
+                    
+                    const requestSenderData = friendships.get(requestSender);
+                    const declinerData = friendships.get(decliner);
+                    
+                    // Remove from requests
+                    declinerData.receivedRequests.delete(requestSender);
+                    requestSenderData.sentRequests.delete(decliner);
+                    
+                    socket.send(JSON.stringify({
+                        type: 'friend_request_declined',
+                        from: requestSender,
+                        friendRequests: {
+                            sent: Array.from(declinerData.sentRequests),
+                            received: Array.from(declinerData.receivedRequests)
+                        }
+                    }));
                     break;
                 
                 default:

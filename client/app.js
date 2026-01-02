@@ -13,6 +13,8 @@ let messageStatuses = {}; // Track message status { 'messageId': 'sent'|'deliver
 let unreadCounts = {}; // Track unread counts { 'chatKey': count }
 let sidebarTab = 'all'; // Current sidebar tab: 'all', 'unread', 'favorites', 'groups'
 let typingTimeout = null; // Timeout for typing indicator
+let friends = new Set(); // Store friends list
+let friendRequests = { sent: new Set(), received: new Set() }; // Friend requests
 
 // Initialize connection when page loads
 window.addEventListener('DOMContentLoaded', () => {

@@ -173,6 +173,12 @@ window.switchSidebarTab = function(tab) {
             panel.classList.add('active');
             updateUnreadChatsList();
         }
+    } else if (tab === 'requests') {
+        const panel = document.getElementById('requestsPanel');
+        if (panel) {
+            panel.classList.add('active');
+            updateFriendRequestsList();
+        }
     } else if (tab === 'favorites') {
         const panel = document.getElementById('favoritesPanel');
         if (panel) {
@@ -279,13 +285,32 @@ function showSearchResults(results) {
         const onlineIndicator = isOnline ? '<span class="online-dot"></span>' : '';
         
         let preview = '';
+        let actionButton = '';
+        
         if (hasChatHistory && lastMessage) {
             const previewText = lastMessage.content.length > 30 
                 ? lastMessage.content.substring(0, 30) + '...' 
                 : lastMessage.content;
             preview = `<div class="item-info">${escapeHtml(previewText)}</div>`;
         } else if (chatType === 'private') {
-            preview = `<div class="item-info" style="color: #667eea;">Tap to start chatting</div>`;
+            const isFriend = friends.has(id);
+            const requestSent = friendRequests.sent.has(id);
+            const requestReceived = friendRequests.received.has(id);
+            
+            if (isFriend) {
+                preview = `<div class="item-info" style="color: #667eea;">Tap to start chatting</div>`;
+            } else if (requestSent) {
+                preview = `<div class="item-info" style="color: #999;">Friend request sent</div>`;
+            } else if (requestReceived) {
+                preview = `<div class="item-info" style="color: #667eea;">Wants to be your friend</div>`;
+                actionButton = `
+                    <button class="btn-accept" style="font-size: 11px; padding: 4px 8px;" onclick="event.stopPropagation(); acceptFriendRequest('${escapeHtml(id)}')">Accept</button>
+                    <button class="btn-decline" style="font-size: 11px; padding: 4px 8px;" onclick="event.stopPropagation(); declineFriendRequest('${escapeHtml(id)}')">Decline</button>
+                `;
+            } else {
+                preview = `<div class="item-info" style="color: #667eea;">Tap to send friend request</div>`;
+                actionButton = `<button class="btn-accept" style="font-size: 11px; padding: 4px 8px;" onclick="event.stopPropagation(); sendFriendRequest('${escapeHtml(id)}')">Add Friend</button>`;
+            }
         } else if (chatType === 'group') {
             const group = allGroups.find(g => g.groupId === id);
             const memberCount = group ? group.memberCount : 0;
@@ -308,10 +333,13 @@ function showSearchResults(results) {
                 </div>
                 <div class="item-footer">
                     ${preview}
-                    ${unreadBadge}
-                    <button class="favorite-btn" onclick="event.stopPropagation(); toggleFavorite('${key}')">
-                        ${favorites.has(key) ? '⭐' : '☆'}
-                    </button>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        ${unreadBadge}
+                        ${actionButton || ''}
+                        ${hasChatHistory ? `<button class="favorite-btn" onclick="event.stopPropagation(); toggleFavorite('${key}')">
+                            ${favorites.has(key) ? '⭐' : '☆'}
+                        </button>` : ''}
+                    </div>
                 </div>
             </div>
         `;
@@ -324,7 +352,13 @@ function showSearchResults(results) {
                     joinGroup(id);
                 }
             } else {
-                selectUser(id);
+                // Only allow chatting if friends
+                if (friends.has(id)) {
+                    selectUser(id);
+                } else if (!friendRequests.sent.has(id) && !friendRequests.received.has(id)) {
+                    // Send friend request if clicked and not already sent/received
+                    sendFriendRequest(id);
+                }
             }
         };
         
@@ -348,11 +382,12 @@ function updateAllChatsList() {
     });
     
     if (chatKeys.length === 0) {
-        // Show online users and groups if no chat history
+        // Show friends only (not all users) if no chat history
         let html = '';
-        if (onlineUsers.length > 1) {
-            html += '<div class="list-item" style="background: #f0f0f0; font-weight: 600; color: #667eea;">Online Users - Click to Chat</div>';
-            onlineUsers.filter(u => u !== currentUsername).forEach(user => {
+        const friendList = Array.from(friends).filter(f => onlineUsers.includes(f));
+        if (friendList.length > 0) {
+            html += '<div class="list-item" style="background: #f0f0f0; font-weight: 600; color: #667eea;">Friends - Click to Chat</div>';
+            friendList.forEach(user => {
                 html += `
                     <div class="list-item" onclick="selectUser('${escapeHtml(user)}')">
                         ${getProfilePicture(user)}

@@ -852,6 +852,54 @@ header h2:hover {
     font-style: italic;
 }
 
+/* Friend Request System */
+.friend-request-actions {
+    display: flex;
+    gap: 8px;
+    margin-left: 10px;
+}
+
+.btn-accept, .btn-decline {
+    padding: 6px 12px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    transition: all 0.2s;
+}
+
+.btn-accept {
+    background: #4caf50;
+    color: white;
+}
+
+.btn-accept:hover {
+    background: #45a049;
+}
+
+.btn-decline {
+    background: #f44336;
+    color: white;
+}
+
+.btn-decline:hover {
+    background: #da190b;
+}
+
+@media (max-width: 768px) {
+    .friend-request-actions {
+        flex-direction: column;
+        width: 100%;
+        margin-left: 0;
+        margin-top: 8px;
+    }
+    
+    .btn-accept, .btn-decline {
+        width: 100%;
+    }
+}
+
 /* Scrollbar Styling */
 .sidebar::-webkit-scrollbar,
 .messages-container::-webkit-scrollbar {

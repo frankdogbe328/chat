@@ -56,6 +56,10 @@
                             <span>Unread</span>
                             <span id="unreadBadge" class="tab-badge hidden">0</span>
                         </button>
+                        <button class="tab-btn" onclick="switchSidebarTab('requests')" data-tab="requests">
+                            <span>Requests</span>
+                            <span id="requestsBadge" class="tab-badge hidden">0</span>
+                        </button>
                         <button class="tab-btn" onclick="switchSidebarTab('favorites')" data-tab="favorites">
                             <span>⭐</span>
                         </button>
@@ -72,6 +76,11 @@
                     <!-- Unread Chats List -->
                     <div id="unreadChatsPanel" class="tab-panel">
                         <div id="unreadChatsList" class="list"></div>
+                    </div>
+
+                    <!-- Friend Requests Panel -->
+                    <div id="requestsPanel" class="tab-panel">
+                        <div id="requestsList" class="list"></div>
                     </div>
 
                     <!-- Favorites List -->
