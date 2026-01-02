@@ -470,10 +470,10 @@ wss.on('connection', (socket, req) => {
                     }
                     
                     const recipient = message.to;
-                    const sender = clientInfo5.username;
+                    const msgSender = clientInfo5.username;
                     
                     // Check if users are friends
-                    const senderFriendship = friendships.get(sender);
+                    const senderFriendship = friendships.get(msgSender);
                     if (!senderFriendship || !senderFriendship.friends.has(recipient)) {
                         socket.send(JSON.stringify({
                             type: 'error',
@@ -487,7 +487,7 @@ wss.on('connection', (socket, req) => {
                     // Retry logic for message delivery (with setTimeout for delayed retries)
                     const privateMsg = {
                         type: 'private_message',
-                        from: clientInfo5.username,
+                        from: msgSender,
                         content: privateContent,
                         timestamp: new Date().toISOString(),
                         messageId: message.messageId || `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
@@ -515,7 +515,7 @@ wss.on('connection', (socket, req) => {
                                 }));
                             }, 500);
                             
-                            logMessage('private', clientInfo5.username, recipient, privateContent);
+                            logMessage('private', msgSender, recipient, privateContent);
                         } else {
                             retries--;
                             if (retries > 0) {
