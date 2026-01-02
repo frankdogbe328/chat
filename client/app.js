@@ -441,6 +441,18 @@ function selectUser(username) {
         return;
     }
     
+    // Check if user is a friend
+    if (!friends.has(username)) {
+        alert(`You must be friends with ${username} to send messages. Send a friend request first.`);
+        return;
+    }
+    
+    // Check if user is online
+    if (!onlineUsers.includes(username)) {
+        alert(`User "${username}" is not online`);
+        return;
+    }
+    
     currentChat = {
         type: 'private',
         id: username,
