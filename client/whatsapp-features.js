@@ -177,38 +177,73 @@ function handleSearch() {
         return;
     }
     
-    // Filter chats based on search
+    // Search through:
+    // 1. Existing chats (chatHistory)
+    // 2. Online users
+    // 3. All groups
+    
+    const results = [];
+    
+    // Search existing chats
     const allChatKeys = Object.keys(chatHistory);
-    const filtered = allChatKeys.filter(key => {
+    allChatKeys.forEach(key => {
         const [type, id] = key.split(':');
-        return id.toLowerCase().includes(searchTerm);
+        if (id.toLowerCase().includes(searchTerm)) {
+            results.push({ type: 'chat', key: key, id: id, chatType: type });
+        }
     });
     
-    // Show search results in current panel
-    showSearchResults(filtered);
+    // Search online users (even if not in chat history)
+    onlineUsers.forEach(user => {
+        if (user !== currentUsername && user.toLowerCase().includes(searchTerm)) {
+            const chatKey = 'private:' + user;
+            const exists = results.some(r => r.key === chatKey);
+            if (!exists) {
+                results.push({ type: 'user', key: chatKey, id: user, chatType: 'private' });
+            }
+        }
+    });
+    
+    // Search groups (even if not in chat history)
+    allGroups.forEach(group => {
+        if (group.groupId.toLowerCase().includes(searchTerm)) {
+            const chatKey = 'group:' + group.groupId;
+            const exists = results.some(r => r.key === chatKey);
+            if (!exists) {
+                results.push({ type: 'group', key: chatKey, id: group.groupId, chatType: 'group' });
+            }
+        }
+    });
+    
+    // Show search results
+    showSearchResults(results);
 }
 
 // Show search results
-function showSearchResults(filteredKeys) {
-    const panel = document.querySelector('.tab-panel.active');
+function showSearchResults(results) {
+    // Always show search results in All Chats panel
+    const panel = document.getElementById('allChatsPanel');
     if (!panel) return;
     
-    const list = panel.querySelector('.list');
+    // Hide other panels
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    panel.classList.add('active');
+    
+    const list = document.getElementById('allChatsList');
     if (!list) return;
     
     list.innerHTML = '';
     
-    if (filteredKeys.length === 0) {
-        list.innerHTML = '<div class="list-item"><div class="item-info">No results found</div></div>';
+    if (results.length === 0) {
+        list.innerHTML = '<div class="list-item"><div class="item-info">No results found. Try a different search term.</div></div>';
         return;
     }
     
-    filteredKeys.forEach(key => {
-        const [type, id] = key.split(':');
+    results.forEach(result => {
+        const { type, key, id, chatType } = result;
         const messages = chatHistory[key] || [];
         const lastMessage = messages[messages.length - 1];
-        
-        if (!lastMessage) return;
+        const hasChatHistory = messages.length > 0;
         
         const item = document.createElement('div');
         item.className = 'list-item';
@@ -219,21 +254,54 @@ function showSearchResults(filteredKeys) {
         const unreadCount = unreadCounts[key] || 0;
         const unreadBadge = unreadCount > 0 ? `<span class="unread-badge">${unreadCount}</span>` : '';
         const favoriteIcon = favorites.has(key) ? '⭐' : '';
+        const isOnline = chatType === 'private' && onlineUsers.includes(id);
+        const onlineIndicator = isOnline ? '<span class="online-dot"></span>' : '';
+        
+        let preview = '';
+        if (hasChatHistory && lastMessage) {
+            const previewText = lastMessage.content.length > 30 
+                ? lastMessage.content.substring(0, 30) + '...' 
+                : lastMessage.content;
+            preview = `<div class="item-info">${escapeHtml(previewText)}</div>`;
+        } else if (chatType === 'private') {
+            preview = `<div class="item-info" style="color: #667eea;">Tap to start chatting</div>`;
+        } else if (chatType === 'group') {
+            const group = allGroups.find(g => g.groupId === id);
+            const memberCount = group ? group.memberCount : 0;
+            preview = `<div class="item-info">${memberCount} member(s) - Tap to join</div>`;
+        }
+        
+        const time = hasChatHistory && lastMessage 
+            ? new Date(lastMessage.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            : '';
         
         item.innerHTML = `
             ${getProfilePicture(id)}
             <div class="item-content">
-                <div class="item-name">
-                    ${type === 'group' ? '👥' : '👤'} ${escapeHtml(id)} ${favoriteIcon}
-                    ${unreadBadge}
+                <div class="item-header">
+                    <div class="item-name">
+                        ${chatType === 'group' ? '👥' : '👤'} ${escapeHtml(id)} ${favoriteIcon}
+                        ${onlineIndicator}
+                    </div>
+                    ${time ? `<div class="item-time">${time}</div>` : ''}
                 </div>
-                <div class="item-info">${escapeHtml(lastMessage.content.substring(0, 30))}...</div>
+                <div class="item-footer">
+                    ${preview}
+                    ${unreadBadge}
+                    <button class="favorite-btn" onclick="event.stopPropagation(); toggleFavorite('${key}')">
+                        ${favorites.has(key) ? '⭐' : '☆'}
+                    </button>
+                </div>
             </div>
         `;
         
         item.onclick = () => {
-            if (type === 'group') {
-                selectGroup(id);
+            if (chatType === 'group') {
+                if (joinedGroups.has(id)) {
+                    selectGroup(id);
+                } else {
+                    joinGroup(id);
+                }
             } else {
                 selectUser(id);
             }
@@ -246,14 +314,22 @@ function showSearchResults(filteredKeys) {
 // Update all chats list
 function updateAllChatsList() {
     const list = document.getElementById('allChatsList');
-    if (!list) return;
+    if (!list) {
+        console.error('allChatsList not found');
+        return;
+    }
     
     const chatKeys = Object.keys(chatHistory).sort((a, b) => {
         const msgA = chatHistory[a];
         const msgB = chatHistory[b];
-        if (!msgA.length || !msgB.length) return 0;
+        if (!msgA || !msgA.length || !msgB || !msgB.length) return 0;
         return new Date(msgB[msgB.length - 1].timestamp) - new Date(msgA[msgA.length - 1].timestamp);
     });
+    
+    if (chatKeys.length === 0) {
+        list.innerHTML = '<div class="list-item"><div class="item-info">No chats yet. Start chatting with someone!</div></div>';
+        return;
+    }
     
     renderChatList(list, chatKeys);
 }
@@ -261,24 +337,41 @@ function updateAllChatsList() {
 // Update unread chats list
 function updateUnreadChatsList() {
     const list = document.getElementById('unreadChatsList');
-    if (!list) return;
+    if (!list) {
+        console.error('unreadChatsList not found');
+        return;
+    }
     
     const unreadKeys = Object.keys(unreadCounts).filter(key => unreadCounts[key] > 0);
-    const sorted = unreadKeys.sort((a, b) => unreadCounts[b] - unreadCounts[a]);
     
+    if (unreadKeys.length === 0) {
+        list.innerHTML = '<div class="list-item"><div class="item-info">No unread messages</div></div>';
+        return;
+    }
+    
+    const sorted = unreadKeys.sort((a, b) => unreadCounts[b] - unreadCounts[a]);
     renderChatList(list, sorted);
 }
 
 // Update favorites list
 function updateFavoritesList() {
     const list = document.getElementById('favoritesList');
-    if (!list) return;
+    if (!list) {
+        console.error('favoritesList not found');
+        return;
+    }
     
     const favoriteKeys = Array.from(favorites).filter(key => chatHistory[key]);
+    
+    if (favoriteKeys.length === 0) {
+        list.innerHTML = '<div class="list-item"><div class="item-info">No favorite chats. Star a chat to add it to favorites!</div></div>';
+        return;
+    }
+    
     const sorted = favoriteKeys.sort((a, b) => {
         const msgA = chatHistory[a];
         const msgB = chatHistory[b];
-        if (!msgA.length || !msgB.length) return 0;
+        if (!msgA || !msgA.length || !msgB || !msgB.length) return 0;
         return new Date(msgB[msgB.length - 1].timestamp) - new Date(msgA[msgA.length - 1].timestamp);
     });
     

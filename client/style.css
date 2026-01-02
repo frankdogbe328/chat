@@ -681,10 +681,11 @@ header h2:hover {
     display: none;
     flex: 1;
     overflow-y: auto;
+    flex-direction: column;
 }
 
 .tab-panel.active {
-    display: flex;
+    display: flex !important;
     flex-direction: column;
 }
 
