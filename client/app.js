@@ -93,8 +93,8 @@ function closeSidebarOnMobile() {
     }
 }
 
-// Handle login
-function handleLogin() {
+// Handle login - Make globally accessible
+window.handleLogin = function() {
     const usernameInput = document.getElementById('usernameInput');
     const username = usernameInput.value.trim();
     
