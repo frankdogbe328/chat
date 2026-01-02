@@ -668,6 +668,7 @@ header h2:hover {
         display: block !important;
         visibility: visible !important;
         opacity: 1 !important;
+        flex-shrink: 0;
     }
 
     .sidebar-overlay.show {
