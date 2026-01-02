@@ -1,0 +1,26 @@
+{
+  "name": "distributed-communication-system",
+  "version": "1.0.0",
+  "description": "A distributed communication system supporting group and private messaging",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": [
+    "distributed-systems",
+    "websocket",
+    "chat",
+    "messaging",
+    "real-time"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "ws": "^8.14.2"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}
+

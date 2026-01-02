@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Distributed Communication System</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Login Section -->
+        <div id="loginSection" class="section">
+            <div class="login-box">
+                <h1>Distributed Communication System</h1>
+                <p class="subtitle">Connect and communicate across distributed nodes</p>
+                <div class="form-group">
+                    <label for="usernameInput">Enter your username:</label>
+                    <input type="text" id="usernameInput" placeholder="Your username" autocomplete="off">
+                    <button id="loginBtn" onclick="handleLogin()">Connect</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Application Section -->
+        <div id="appSection" class="section hidden">
+            <header>
+                <h2>Distributed Communication System</h2>
+                <div class="user-info">
+                    <span id="currentUsername"></span>
+                    <button id="logoutBtn" onclick="handleLogout()">Logout</button>
+                </div>
+            </header>
+
+            <div class="main-content">
+                <!-- Sidebar -->
+                <aside class="sidebar">
+                    <!-- Groups Section -->
+                    <div class="panel">
+                        <h3>Groups</h3>
+                        <div class="group-actions">
+                            <input type="text" id="newGroupInput" placeholder="Group name" autocomplete="off">
+                            <button onclick="createGroup()">Create</button>
+                        </div>
+                        <div id="groupsList" class="list"></div>
+                    </div>
+
+                    <!-- Online Users Section -->
+                    <div class="panel">
+                        <h3>Online Users</h3>
+                        <div id="usersList" class="list"></div>
+                    </div>
+                </aside>
+
+                <!-- Chat Area -->
+                <main class="chat-area">
+                    <div id="chatHeader" class="chat-header">
+                        <h3 id="chatTitle">Select a group or user to start chatting</h3>
+                        <div id="chatActions" class="hidden">
+                            <button id="leaveGroupBtn" onclick="leaveCurrentGroup()" class="btn-secondary">Leave Group</button>
+                        </div>
+                    </div>
+                    
+                    <div id="messagesContainer" class="messages-container">
+                        <div class="welcome-message">
+                            <p>Welcome to the Distributed Communication System!</p>
+                            <p>• Create or join a group to send group messages</p>
+                            <p>• Select a user to send private messages</p>
+                            <p>• All messages are logged and tracked</p>
+                        </div>
+                    </div>
+
+                    <div id="messageInputSection" class="message-input-section hidden">
+                        <div class="input-group">
+                            <input type="text" id="messageInput" placeholder="Type your message..." autocomplete="off">
+                            <button id="sendBtn" onclick="sendMessage()">Send</button>
+                        </div>
+                        <div class="message-type-info">
+                            <span id="messageTypeInfo"></span>
+                        </div>
+                    </div>
+                </main>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
+
