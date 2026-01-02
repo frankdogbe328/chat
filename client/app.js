@@ -17,6 +17,76 @@ let friends = new Set(); // Store friends list
 let friendRequests = { sent: new Set(), received: new Set() }; // Friend requests
 let allRegisteredUsers = []; // Store all registered users (online and offline)
 
+// Define handleLogin immediately to ensure it's always available
+window.handleLogin = function() {
+    const usernameInput = document.getElementById('usernameInput');
+    const username = usernameInput ? usernameInput.value.trim() : '';
+    
+    if (!username) {
+        alert('Please enter a username');
+        return;
+    }
+    
+    // Connect to WebSocket server
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${protocol}//${window.location.host}`;
+    
+    ws = new WebSocket(wsUrl);
+    
+    ws.onopen = () => {
+        console.log('WebSocket connected');
+        wsReady = true;
+        // Register user
+        ws.send(JSON.stringify({
+            type: 'register',
+            username: username
+        }));
+    };
+    
+    ws.onmessage = (event) => {
+        try {
+            const message = JSON.parse(event.data);
+            if (typeof handleServerMessage === 'function') {
+                handleServerMessage(message);
+            }
+        } catch (err) {
+            console.error('Error parsing message:', err);
+        }
+    };
+    
+    ws.onerror = (error) => {
+        console.error('WebSocket error:', error);
+        wsReady = false;
+        alert('Connection error. Please check if the server is running.');
+    };
+    
+    ws.onclose = () => {
+        console.log('WebSocket disconnected');
+        wsReady = false;
+        // Only show login screen if we were logged in
+        if (currentUsername) {
+            const loginSection = document.getElementById('loginSection');
+            const appSection = document.getElementById('appSection');
+            if (loginSection) loginSection.classList.remove('hidden');
+            if (appSection) appSection.classList.add('hidden');
+            currentUsername = null;
+            currentChat = null;
+            joinedGroups.clear();
+        }
+        // Clear connection
+        ws = null;
+    };
+    
+    // Start heartbeat (only if not already started)
+    if (!window.heartbeatInterval) {
+        window.heartbeatInterval = setInterval(() => {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ type: 'heartbeat' }));
+            }
+        }, 30000); // Send heartbeat every 30 seconds
+    }
+};
+
 // Initialize connection when page loads
 window.addEventListener('DOMContentLoaded', () => {
     // Load favorites from localStorage
