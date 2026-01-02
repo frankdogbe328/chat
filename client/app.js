@@ -17,10 +17,10 @@ let friends = new Set(); // Store friends list
 let friendRequests = { sent: new Set(), received: new Set() }; // Friend requests
 let allRegisteredUsers = []; // Store all registered users (online and offline)
 
-// Define handleLogin immediately to ensure it's always available
-window.handleLogin = function() {
+// Handle login
+function handleLogin() {
     const usernameInput = document.getElementById('usernameInput');
-    const username = usernameInput ? usernameInput.value.trim() : '';
+    const username = usernameInput.value.trim();
     
     if (!username) {
         alert('Please enter a username');
@@ -46,9 +46,7 @@ window.handleLogin = function() {
     ws.onmessage = (event) => {
         try {
             const message = JSON.parse(event.data);
-            if (typeof handleServerMessage === 'function') {
-                handleServerMessage(message);
-            }
+            handleServerMessage(message);
         } catch (err) {
             console.error('Error parsing message:', err);
         }
@@ -65,10 +63,8 @@ window.handleLogin = function() {
         wsReady = false;
         // Only show login screen if we were logged in
         if (currentUsername) {
-            const loginSection = document.getElementById('loginSection');
-            const appSection = document.getElementById('appSection');
-            if (loginSection) loginSection.classList.remove('hidden');
-            if (appSection) appSection.classList.add('hidden');
+            document.getElementById('loginSection').classList.remove('hidden');
+            document.getElementById('appSection').classList.add('hidden');
             currentUsername = null;
             currentChat = null;
             joinedGroups.clear();
@@ -77,42 +73,25 @@ window.handleLogin = function() {
         ws = null;
     };
     
-    // Start heartbeat (only if not already started)
-    if (!window.heartbeatInterval) {
-        window.heartbeatInterval = setInterval(() => {
-            if (ws && ws.readyState === WebSocket.OPEN) {
-                ws.send(JSON.stringify({ type: 'heartbeat' }));
-            }
-        }, 30000); // Send heartbeat every 30 seconds
-    }
-};
+    // Start heartbeat
+    setInterval(() => {
+        if (ws && ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: 'heartbeat' }));
+        }
+    }, 30000); // Send heartbeat every 30 seconds
+}
 
 // Initialize connection when page loads
 window.addEventListener('DOMContentLoaded', () => {
     // Load favorites from localStorage
     loadFavorites();
     
-    // Setup login button click handler as backup
-    const loginBtn = document.getElementById('loginBtn');
-    if (loginBtn) {
-        loginBtn.addEventListener('click', () => {
-            if (typeof window.handleLogin === 'function') {
-                window.handleLogin();
-            } else {
-                console.error('handleLogin function not found');
-                alert('Login function not loaded. Please refresh the page.');
-            }
-        });
-    }
-    
     // Allow Enter key to login
     const usernameInput = document.getElementById('usernameInput');
     if (usernameInput) {
         usernameInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
-                if (typeof window.handleLogin === 'function') {
-                    window.handleLogin();
-                }
+                handleLogin();
             }
         });
     }
