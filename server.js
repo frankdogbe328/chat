@@ -521,12 +521,20 @@ wss.on('connection', (socket, req) => {
 });
 
 // Start server
-server.listen(PORT, '0.0.0.0', () => {
+server.listen(PORT, () => {
     console.log(`Distributed Communication System Server running on port ${PORT}`);
-    console.log(`Access the application at:`);
-    console.log(`  - Local: http://localhost:${PORT}`);
-    console.log(`  - Network: http://YOUR_IP_ADDRESS:${PORT}`);
-    console.log(`  (Find your IP with: ipconfig | findstr IPv4)`);
+    console.log(`Access the application at: http://localhost:${PORT}`);
     console.log('Server is ready to handle distributed connections...');
+});
+
+// Handle server errors
+server.on('error', (error) => {
+    if (error.code === 'EADDRINUSE') {
+        console.error(`Port ${PORT} is already in use`);
+        process.exit(1);
+    } else {
+        console.error('Server error:', error);
+        process.exit(1);
+    }
 });
 
