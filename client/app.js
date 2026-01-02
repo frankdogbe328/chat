@@ -262,6 +262,12 @@ function handleServerMessage(message) {
             break;
         
         case 'private_message':
+            // Only process if from a friend
+            if (!friends.has(message.from)) {
+                console.log('Ignoring message from non-friend:', message.from);
+                break;
+            }
+            
             const privateChatKey = 'private:' + message.from;
             const privateMessageId = message.messageId || generateMessageId();
             
@@ -302,6 +308,62 @@ function handleServerMessage(message) {
                     from: message.from
                 }));
             }
+            break;
+        
+        case 'friend_request_sent':
+            friendRequests.sent.add(message.to);
+            updateAllChatLists();
+            if (typeof showSystemMessage === 'function') {
+                showSystemMessage(`Friend request sent to ${message.to}`);
+            }
+            break;
+        
+        case 'friend_request_received':
+            friendRequests.received.add(message.from);
+            if (typeof updateFriendRequestsList === 'function') {
+                updateFriendRequestsList();
+            }
+            if (typeof updateRequestsBadge === 'function') {
+                updateRequestsBadge();
+            }
+            updateAllChatLists();
+            if (typeof showSystemMessage === 'function') {
+                showSystemMessage(`${message.from} sent you a friend request`);
+            }
+            break;
+        
+        case 'friend_request_accepted':
+            friends.add(message.from);
+            friendRequests.sent.delete(message.from);
+            friendRequests.received.delete(message.from);
+            if (message.friends) {
+                friends = new Set(message.friends);
+            }
+            if (typeof updateFriendRequestsList === 'function') {
+                updateFriendRequestsList();
+            }
+            if (typeof updateRequestsBadge === 'function') {
+                updateRequestsBadge();
+            }
+            updateAllChatLists();
+            if (typeof showSystemMessage === 'function') {
+                showSystemMessage(`${message.from} accepted your friend request`);
+            }
+            break;
+        
+        case 'friend_request_declined':
+            friendRequests.sent.delete(message.from);
+            if (message.friendRequests) {
+                friendRequests.sent = new Set(message.friendRequests.sent || []);
+                friendRequests.received = new Set(message.friendRequests.received || []);
+            }
+            if (typeof updateFriendRequestsList === 'function') {
+                updateFriendRequestsList();
+            }
+            if (typeof updateRequestsBadge === 'function') {
+                updateRequestsBadge();
+            }
+            updateAllChatLists();
             break;
         
         case 'typing':
