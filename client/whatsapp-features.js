@@ -1,6 +1,11 @@
 // WhatsApp-like Features
 // This file contains functions for message status, typing indicators, profile pictures, etc.
 
+// Declare sidebarTab if not already declared (to avoid errors if this file loads first)
+if (typeof sidebarTab === 'undefined') {
+    var sidebarTab = 'all'; // Current sidebar tab: 'all', 'unread', 'favorites', 'groups'
+}
+
 // Generate profile picture/avatar based on username - Make globally accessible
 window.getProfilePicture = function(username) {
     const colors = ['#667eea', '#764ba2', '#f093fb', '#4facfe', '#43e97b', '#fa709a', '#fee140', '#30cfd0'];
