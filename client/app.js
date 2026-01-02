@@ -68,8 +68,8 @@ window.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// Toggle sidebar on mobile
-function toggleSidebar() {
+// Toggle sidebar on mobile - Make globally accessible
+window.toggleSidebar = function() {
     const sidebar = document.getElementById('sidebar');
     const overlay = document.querySelector('.sidebar-overlay');
     
@@ -402,8 +402,8 @@ function handleServerMessage(message) {
     }
 }
 
-// Create a new group
-function createGroup() {
+// Create a new group - Make globally accessible
+window.createGroup = function() {
     const groupInput = document.getElementById('newGroupInput');
     const groupName = groupInput.value.trim();
     
@@ -459,8 +459,8 @@ function joinGroup(groupId) {
     }, 200);
 }
 
-// Leave current group
-function leaveCurrentGroup() {
+// Leave current group - Make globally accessible
+window.leaveCurrentGroup = function() {
     if (!currentChat || currentChat.type !== 'group') {
         return;
     }
@@ -708,7 +708,7 @@ function updateUsersList() {
 }
 
 // Go to home screen
-function goToHome() {
+window.goToHome = function() {
     currentChat = null;
     updateChatView();
     closeSidebarOnMobile();
