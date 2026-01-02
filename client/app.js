@@ -7,6 +7,12 @@ let onlineUsers = [];
 let allGroups = [];
 let wsReady = false; // Track if WebSocket is ready to send
 let chatHistory = {}; // Store chat history { 'private:username': [...], 'group:groupId': [...] }
+let favorites = new Set(); // Store favorite chats
+let typingUsers = {}; // Track who is typing { 'chatKey': Set of usernames }
+let messageStatuses = {}; // Track message status { 'messageId': 'sent'|'delivered'|'read' }
+let unreadCounts = {}; // Track unread counts { 'chatKey': count }
+let sidebarTab = 'all'; // Current sidebar tab: 'all', 'unread', 'favorites', 'groups'
+let typingTimeout = null; // Timeout for typing indicator
 
 // Initialize connection when page loads
 window.addEventListener('DOMContentLoaded', () => {
@@ -20,13 +26,18 @@ window.addEventListener('DOMContentLoaded', () => {
         });
     }
     
-    // Allow Enter key to send message
+    // Allow Enter key to send message and handle typing indicator
     const messageInput = document.getElementById('messageInput');
     if (messageInput) {
         messageInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
                 sendMessage();
+            } else {
+                handleTyping();
             }
+        });
+        messageInput.addEventListener('input', () => {
+            handleTyping();
         });
     }
     
@@ -155,6 +166,8 @@ function handleServerMessage(message) {
             document.getElementById('currentUsername').textContent = `Logged in as: ${message.username}`;
             document.getElementById('loginSection').classList.add('hidden');
             document.getElementById('appSection').classList.remove('hidden');
+            // Initialize sidebar to show all chats
+            switchSidebarTab('all');
             break;
         
         case 'register_error':
@@ -214,6 +227,9 @@ function handleServerMessage(message) {
         
         case 'group_message':
             const groupChatKey = 'group:' + message.groupId;
+            const groupMessageId = message.messageId || generateMessageId();
+            const isReceived = message.from !== currentUsername;
+            
             // Save to history
             if (!chatHistory[groupChatKey]) {
                 chatHistory[groupChatKey] = [];
@@ -223,16 +239,25 @@ function handleServerMessage(message) {
                 from: message.from,
                 content: message.content,
                 timestamp: message.timestamp,
-                received: message.from !== currentUsername
+                received: isReceived,
+                messageId: groupMessageId
             });
             
+            // Increment unread if not current chat
+            if (isReceived && (!currentChat || getChatKey(currentChat) !== groupChatKey)) {
+                unreadCounts[groupChatKey] = (unreadCounts[groupChatKey] || 0) + 1;
+                updateAllChatLists();
+            }
+            
             if (currentChat && currentChat.type === 'group' && currentChat.id === message.groupId) {
-                addMessageToChat('group', message.from, message.content, message.timestamp, message.from !== currentUsername);
+                addMessageToChat('group', message.from, message.content, message.timestamp, isReceived, groupMessageId);
             }
             break;
         
         case 'private_message':
             const privateChatKey = 'private:' + message.from;
+            const privateMessageId = message.messageId || generateMessageId();
+            
             // Save to history
             if (!chatHistory[privateChatKey]) {
                 chatHistory[privateChatKey] = [];
@@ -242,17 +267,54 @@ function handleServerMessage(message) {
                 from: message.from,
                 content: message.content,
                 timestamp: message.timestamp,
-                received: true
+                received: true,
+                messageId: privateMessageId
             });
+            
+            // Increment unread if not current chat
+            if (!currentChat || getChatKey(currentChat) !== privateChatKey) {
+                unreadCounts[privateChatKey] = (unreadCounts[privateChatKey] || 0) + 1;
+                updateAllChatLists();
+            }
             
             // Show private message in chat if we're chatting with this user
             if (currentChat && currentChat.type === 'private' && currentChat.id === message.from) {
-                addMessageToChat('private', message.from, message.content, message.timestamp, true);
+                addMessageToChat('private', message.from, message.content, message.timestamp, true, privateMessageId);
             } else {
                 // Show notification
                 showSystemMessage(`Private message from ${message.from}`, null, true);
                 // Update UI to show there's a message waiting
-                updateUsersList();
+                updateAllChatLists();
+            }
+            
+            // Send read receipt
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                    type: 'message_read',
+                    messageId: privateMessageId,
+                    from: message.from
+                }));
+            }
+            break;
+        
+        case 'typing':
+            const typingChatKey = message.chatKey;
+            if (message.isTyping) {
+                showTypingIndicator(typingChatKey, message.username);
+            } else {
+                hideTypingIndicator(typingChatKey, message.username);
+            }
+            break;
+        
+        case 'message_delivered':
+            if (message.messageId) {
+                updateMessageStatus(message.messageId, 'delivered');
+            }
+            break;
+        
+        case 'message_read':
+            if (message.messageId) {
+                updateMessageStatus(message.messageId, 'read');
             }
             break;
         
@@ -411,40 +473,59 @@ function sendMessage() {
     }
     
     const timestamp = new Date().toISOString();
-    const chatKey = currentChat.type + ':' + currentChat.id;
+    const chatKey = getChatKey(currentChat);
+    const messageId = generateMessageId();
     
     // Save to history
     if (!chatHistory[chatKey]) {
         chatHistory[chatKey] = [];
     }
-    chatHistory[chatKey].push({
+    const messageData = {
         type: currentChat.type,
         from: currentUsername,
         content: content,
         timestamp: timestamp,
-        received: false
-    });
+        received: false,
+        messageId: messageId,
+        status: 'sending'
+    };
+    chatHistory[chatKey].push(messageData);
+    messageStatuses[messageId] = 'sending';
     
     if (currentChat.type === 'group') {
         ws.send(JSON.stringify({
             type: 'group_message',
             groupId: currentChat.id,
-            content: content
+            content: content,
+            messageId: messageId
         }));
         
-        // Add message to chat immediately
-        addMessageToChat('group', currentUsername, content, timestamp, false);
+        // Add message to chat immediately with status
+        addMessageToChat('group', currentUsername, content, timestamp, false, messageId);
+        // Mark as sent
+        setTimeout(() => {
+            updateMessageStatus(messageId, 'sent');
+            messageData.status = 'sent';
+        }, 100);
     } else if (currentChat.type === 'private') {
         ws.send(JSON.stringify({
             type: 'private_message',
             to: currentChat.id,
-            content: content
+            content: content,
+            messageId: messageId
         }));
         
-        // Add message to chat immediately
-        addMessageToChat('private', currentUsername, content, timestamp, false);
+        // Add message to chat immediately with status
+        addMessageToChat('private', currentUsername, content, timestamp, false, messageId);
+        // Mark as sent
+        setTimeout(() => {
+            updateMessageStatus(messageId, 'sent');
+            messageData.status = 'sent';
+        }, 100);
     }
     
+    // Update chat lists
+    updateAllChatLists();
     messageInput.value = '';
 }
 
@@ -489,9 +570,11 @@ function updateGroupsList() {
     });
 }
 
-// Update users list
+// Update users list (for direct messaging/contacts)
 function updateUsersList() {
     const usersList = document.getElementById('usersList');
+    if (!usersList) return;
+    
     usersList.innerHTML = '';
     
     const filteredUsers = onlineUsers.filter(user => user !== currentUsername);
@@ -508,13 +591,22 @@ function updateUsersList() {
             item.classList.add('active');
         }
         
+        const chatKey = 'private:' + user;
+        const unreadCount = unreadCounts[chatKey] || 0;
+        const unreadBadge = unreadCount > 0 ? `<span class="unread-badge">${unreadCount}</span>` : '';
+        
         item.innerHTML = `
-            <div class="item-name">${escapeHtml(user)}</div>
-            <div class="item-info">Click to send private message</div>
+            ${getProfilePicture(user)}
+            <div class="item-content">
+                <div class="item-header">
+                    <div class="item-name">👤 ${escapeHtml(user)} <span class="online-dot"></span></div>
+                    ${unreadBadge}
+                </div>
+                <div class="item-info">Click to send private message</div>
+            </div>
         `;
         item.onclick = () => {
             selectUser(user);
-            // closeSidebarOnMobile is called inside selectUser
         };
         
         usersList.appendChild(item);
@@ -548,33 +640,39 @@ function updateChatView() {
     
     messageInputSection.classList.remove('hidden');
     
-    const chatKey = currentChat.type + ':' + currentChat.id;
-    
-    if (currentChat.type === 'group') {
-        chatTitle.textContent = `Group: ${currentChat.id}`;
-        chatActions.classList.remove('hidden');
-        messageTypeInfo.textContent = `Sending group message to all members of "${currentChat.id}"`;
+        const chatKey = getChatKey(currentChat);
         
-        // Load and show chat history
-        messagesContainer.innerHTML = '';
-        if (chatHistory[chatKey] && chatHistory[chatKey].length > 0) {
-            chatHistory[chatKey].forEach(msg => {
-                addMessageToChat(msg.type, msg.from, msg.content, msg.timestamp, msg.received);
-            });
-        }
-    } else if (currentChat.type === 'private') {
-        chatTitle.textContent = `Private Chat: ${currentChat.id}`;
-        chatActions.classList.add('hidden');
-        messageTypeInfo.textContent = `Private message to ${currentChat.id}`;
+        // Mark chat as read when opening
+        markChatAsRead(chatKey);
         
-        // Load and show chat history
-        messagesContainer.innerHTML = '';
-        if (chatHistory[chatKey] && chatHistory[chatKey].length > 0) {
-            chatHistory[chatKey].forEach(msg => {
-                addMessageToChat(msg.type, msg.from, msg.content, msg.timestamp, msg.received);
-            });
+        if (currentChat.type === 'group') {
+            chatTitle.textContent = `Group: ${currentChat.id}`;
+            chatActions.classList.remove('hidden');
+            messageTypeInfo.textContent = `Sending group message to all members of "${currentChat.id}"`;
+            
+            // Load and show chat history
+            messagesContainer.innerHTML = '';
+            if (chatHistory[chatKey] && chatHistory[chatKey].length > 0) {
+                chatHistory[chatKey].forEach(msg => {
+                    addMessageToChat(msg.type, msg.from, msg.content, msg.timestamp, msg.received, msg.messageId);
+                });
+            }
+        } else if (currentChat.type === 'private') {
+            chatTitle.textContent = `Private Chat: ${currentChat.id}`;
+            chatActions.classList.add('hidden');
+            messageTypeInfo.textContent = `Private message to ${currentChat.id}`;
+            
+            // Load and show chat history
+            messagesContainer.innerHTML = '';
+            if (chatHistory[chatKey] && chatHistory[chatKey].length > 0) {
+                chatHistory[chatKey].forEach(msg => {
+                    addMessageToChat(msg.type, msg.from, msg.content, msg.timestamp, msg.received, msg.messageId);
+                });
+            }
         }
-    }
+        
+        // Update typing indicator for this chat
+        updateTypingIndicatorUI(chatKey);
     
     // Focus on message input
     setTimeout(() => {
@@ -594,47 +692,21 @@ function showRecentChats() {
                 <p>Welcome to ZooRoom!</p>
                 <p>• Create or join a group to send group messages</p>
                 <p>• Click on a user's name to chat privately</p>
+                <p>• Use the sidebar tabs to navigate (All, Unread, Favorites, Groups)</p>
                 <p>• All messages are logged and tracked</p>
             </div>
         `;
         return;
     }
     
-    // Sort chats by most recent message
-    const sortedChats = chatKeys.map(key => {
-        const messages = chatHistory[key];
-        const lastMessage = messages[messages.length - 1];
-        return { key, lastMessage, messages };
-    }).sort((a, b) => new Date(b.lastMessage.timestamp) - new Date(a.lastMessage.timestamp));
-    
-    let html = '<div class="recent-chats">';
-    html += '<h3 style="padding: 15px; color: #667eea; border-bottom: 1px solid #e0e0e0;">Recent Chats</h3>';
-    
-    sortedChats.forEach(({ key, lastMessage, messages }) => {
-        const [type, id] = key.split(':');
-        const lastMsgText = lastMessage.content.length > 30 
-            ? lastMessage.content.substring(0, 30) + '...' 
-            : lastMessage.content;
-        const time = new Date(lastMessage.timestamp).toLocaleTimeString();
-        const unreadCount = messages.filter(m => m.received && !m.read).length;
-        const unreadBadge = unreadCount > 0 ? `<span class="unread-badge">${unreadCount}</span>` : '';
-        
-        html += `
-            <div class="recent-chat-item" onclick="openRecentChat('${type}', '${id}')">
-                <div class="recent-chat-info">
-                    <div class="recent-chat-name">
-                        ${type === 'group' ? '👥' : '👤'} ${escapeHtml(id)}
-                        ${unreadBadge}
-                    </div>
-                    <div class="recent-chat-preview">${escapeHtml(lastMsgText)}</div>
-                    <div class="recent-chat-time">${time}</div>
-                </div>
-            </div>
-        `;
-    });
-    
-    html += '</div>';
-    messagesContainer.innerHTML = html;
+    // Use the same rendering as the sidebar
+    updateAllChatsList();
+    messagesContainer.innerHTML = `
+        <div class="welcome-message">
+            <p>Your chats are shown in the sidebar</p>
+            <p>Use the tabs: All, Unread, Favorites, Groups</p>
+        </div>
+    `;
 }
 
 // Open a recent chat

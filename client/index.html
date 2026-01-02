@@ -42,9 +42,45 @@
                 
                 <!-- Sidebar -->
                 <aside class="sidebar" id="sidebar">
-                    <!-- Groups Section -->
-                    <div class="panel">
-                        <h3>Groups</h3>
+                    <!-- Search Bar -->
+                    <div class="panel search-panel">
+                        <input type="text" id="searchInput" placeholder="Search chats, users, groups..." autocomplete="off" oninput="handleSearch()">
+                    </div>
+
+                    <!-- Sidebar Tabs -->
+                    <div class="sidebar-tabs">
+                        <button class="tab-btn active" onclick="switchSidebarTab('all')" data-tab="all">
+                            <span>All</span>
+                        </button>
+                        <button class="tab-btn" onclick="switchSidebarTab('unread')" data-tab="unread">
+                            <span>Unread</span>
+                            <span id="unreadBadge" class="tab-badge hidden">0</span>
+                        </button>
+                        <button class="tab-btn" onclick="switchSidebarTab('favorites')" data-tab="favorites">
+                            <span>⭐</span>
+                        </button>
+                        <button class="tab-btn" onclick="switchSidebarTab('groups')" data-tab="groups">
+                            <span>Groups</span>
+                        </button>
+                    </div>
+
+                    <!-- All Chats List -->
+                    <div id="allChatsPanel" class="tab-panel active">
+                        <div id="allChatsList" class="list"></div>
+                    </div>
+
+                    <!-- Unread Chats List -->
+                    <div id="unreadChatsPanel" class="tab-panel">
+                        <div id="unreadChatsList" class="list"></div>
+                    </div>
+
+                    <!-- Favorites List -->
+                    <div id="favoritesPanel" class="tab-panel">
+                        <div id="favoritesList" class="list"></div>
+                    </div>
+
+                    <!-- Groups Panel -->
+                    <div id="groupsPanel" class="tab-panel">
                         <div class="group-actions">
                             <input type="text" id="newGroupInput" placeholder="Group name" autocomplete="off">
                             <button onclick="createGroup()">Create</button>
@@ -52,10 +88,12 @@
                         <div id="groupsList" class="list"></div>
                     </div>
 
-                    <!-- Online Users Section -->
-                    <div class="panel">
-                        <h3>Online Users</h3>
-                        <div id="usersList" class="list"></div>
+                    <!-- Online Users Section (for direct messaging) -->
+                    <div id="contactsPanel" class="tab-panel">
+                        <div class="panel">
+                            <h3>Online Users</h3>
+                            <div id="usersList" class="list"></div>
+                        </div>
                     </div>
                 </aside>
 
@@ -91,6 +129,7 @@
         </div>
     </div>
 
+    <script src="whatsapp-features.js"></script>
     <script src="app.js"></script>
 </body>
 </html>

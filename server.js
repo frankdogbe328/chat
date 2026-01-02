@@ -428,7 +428,8 @@ wss.on('connection', (socket, req) => {
                         groupId: msgGroupId,
                         from: clientInfo4.username,
                         content: message.content,
-                        timestamp: new Date().toISOString()
+                        timestamp: new Date().toISOString(),
+                        messageId: message.messageId || `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
                     };
                     
                     const groupDelivered = broadcastToGroup(msgGroupId, groupMsg, socket);
@@ -461,7 +462,8 @@ wss.on('connection', (socket, req) => {
                         type: 'private_message',
                         from: clientInfo5.username,
                         content: privateContent,
-                        timestamp: new Date().toISOString()
+                        timestamp: new Date().toISOString(),
+                        messageId: message.messageId || `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
                     };
                     
                     let retries = 3;
@@ -474,8 +476,18 @@ wss.on('connection', (socket, req) => {
                             socket.send(JSON.stringify({
                                 type: 'private_message_sent',
                                 to: recipient,
+                                messageId: privateMsg.messageId,
                                 timestamp: new Date().toISOString()
                             }));
+                            
+                            // Send delivered status
+                            setTimeout(() => {
+                                socket.send(JSON.stringify({
+                                    type: 'message_delivered',
+                                    messageId: privateMsg.messageId
+                                }));
+                            }, 500);
+                            
                             logMessage('private', clientInfo5.username, recipient, privateContent);
                         } else {
                             retries--;
@@ -492,6 +504,48 @@ wss.on('connection', (socket, req) => {
                     };
                     
                     attemptDelivery();
+                    break;
+                
+                case 'typing':
+                    const clientInfo6 = clients.get(socket);
+                    if (!clientInfo6) break;
+                    
+                    const typingChatKey = message.chatKey;
+                    const typingGroupId = typingChatKey?.startsWith('group:') ? typingChatKey.split(':')[1] : null;
+                    const typingRecipient = typingChatKey?.startsWith('private:') ? typingChatKey.split(':')[1] : null;
+                    
+                    if (typingGroupId && clientInfo6.joinedGroups.has(typingGroupId)) {
+                        // Broadcast typing indicator to group
+                        broadcastToGroup(typingGroupId, {
+                            type: 'typing',
+                            chatKey: typingChatKey,
+                            username: clientInfo6.username,
+                            isTyping: message.isTyping
+                        }, socket);
+                    } else if (typingRecipient) {
+                        // Send typing indicator to private chat recipient
+                        sendToClient(typingRecipient, {
+                            type: 'typing',
+                            chatKey: typingChatKey,
+                            username: clientInfo6.username,
+                            isTyping: message.isTyping
+                        });
+                    }
+                    break;
+                
+                case 'message_read':
+                    const clientInfo7 = clients.get(socket);
+                    if (!clientInfo7) break;
+                    
+                    // Notify sender that message was read
+                    const readFrom = message.from;
+                    if (readFrom) {
+                        sendToClient(readFrom, {
+                            type: 'message_read',
+                            messageId: message.messageId,
+                            readBy: clientInfo7.username
+                        });
+                    }
                     break;
                 
                 default:
