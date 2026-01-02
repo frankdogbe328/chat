@@ -170,7 +170,9 @@ function handleServerMessage(message) {
             document.getElementById('loginSection').classList.add('hidden');
             document.getElementById('appSection').classList.remove('hidden');
             // Initialize sidebar to show all chats
-            switchSidebarTab('all');
+            setTimeout(() => {
+                switchSidebarTab('all');
+            }, 100);
             break;
         
         case 'register_error':
