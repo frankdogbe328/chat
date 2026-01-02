@@ -152,8 +152,9 @@ header .sidebar-toggle {
     border: 1px solid rgba(255, 255, 255, 0.3);
     border-radius: 6px;
     cursor: pointer;
-    font-size: 18px;
-    min-height: 36px;
+    font-size: 20px;
+    min-height: 40px;
+    min-width: 40px;
     touch-action: manipulation;
     position: relative;
     z-index: 1002; /* Higher than overlay to always be clickable */
@@ -664,7 +665,9 @@ header h2:hover {
     }
 
     header .sidebar-toggle {
-        display: block;
+        display: block !important;
+        visibility: visible !important;
+        opacity: 1 !important;
     }
 
     .sidebar-overlay.show {
@@ -804,11 +807,6 @@ header h2:hover {
         width: 260px;
     }
 
-    .sidebar-toggle {
-        padding: 8px 12px;
-        font-size: 14px;
-        top: 65px;
-    }
 
     .chat-header h3 {
         font-size: 13px;
