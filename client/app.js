@@ -140,7 +140,7 @@ window.toggleSidebar = function() {
         sidebar.classList.toggle('open');
         overlay.classList.toggle('show');
     }
-}
+};
 
 // Close sidebar when selecting item on mobile
 function closeSidebarOnMobile() {
